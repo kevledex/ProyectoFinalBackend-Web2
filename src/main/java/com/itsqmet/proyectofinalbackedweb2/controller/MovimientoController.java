@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/movimientos")
@@ -41,10 +42,15 @@ public class MovimientoController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerPorId(@PathVariable Long id) {
-        return movimientoService.obtenerPorId(id)
-                .map(movimiento -> ResponseEntity.ok((Object) movimiento))
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Movimiento con id " + id + " no encontrado")));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Optional<Movimiento> movimientoOpt = movimientoService.obtenerPorId(id);
+        if (movimientoOpt.isEmpty() || !tieneAcceso(movimientoOpt.get(), authentication)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Movimiento con id " + id + " no encontrado"));
+        }
+
+        return ResponseEntity.ok(movimientoOpt.get());
     }
 
     @PostMapping
@@ -80,6 +86,14 @@ public class MovimientoController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
         }
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Optional<Movimiento> existenteOpt = movimientoService.obtenerPorId(id);
+        if (existenteOpt.isEmpty() || !tieneAcceso(existenteOpt.get(), authentication)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Movimiento con id " + id + " no encontrado"));
+        }
+
         return movimientoService.actualizar(id, movimiento)
                 .map(error -> ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", error)))
@@ -88,15 +102,29 @@ public class MovimientoController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminar(@PathVariable Long id) {
-        if (movimientoService.eliminar(id)) {
-            return ResponseEntity.ok(Map.of("mensaje", "Movimiento eliminado correctamente"));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Optional<Movimiento> existenteOpt = movimientoService.obtenerPorId(id);
+        if (existenteOpt.isEmpty() || !tieneAcceso(existenteOpt.get(), authentication)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Movimiento con id " + id + " no encontrado"));
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "Movimiento con id " + id + " no encontrado"));
+
+        movimientoService.eliminar(id);
+        return ResponseEntity.ok(Map.of("mensaje", "Movimiento eliminado correctamente"));
     }
 
     private boolean esAdministrador(Authentication authentication) {
         return authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMINISTRADOR"));
+    }
+
+    private boolean tieneAcceso(Movimiento movimiento, Authentication authentication) {
+        if (esAdministrador(authentication)) {
+            return true;
+        }
+
+        Usuario usuario = usuarioService.obtenerPorEmail(authentication.getName()).orElseThrow();
+        return movimiento.getUsuario().getId().equals(usuario.getId());
     }
 }

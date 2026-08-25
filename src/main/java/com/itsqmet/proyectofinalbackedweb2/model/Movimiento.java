@@ -25,7 +25,6 @@ public class Movimiento {
     @Column(nullable = false)
     private Double monto;
 
-    @NotNull(message = "La fecha no puede estar vacía")
     @Column(nullable = false)
     private LocalDateTime fecha;
 

@@ -1,6 +1,7 @@
 package com.itsqmet.proyectofinalbackedweb2.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -27,6 +28,7 @@ public class Usuario {
     private String email;
 
     @NotBlank(message = "La contraseña no puede estar vacía")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false)
     private String password;
 
