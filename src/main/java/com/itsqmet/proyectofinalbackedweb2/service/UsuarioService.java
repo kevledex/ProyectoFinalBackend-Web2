@@ -46,6 +46,24 @@ public class UsuarioService {
         return Optional.empty();
     }
 
+    public Optional<String> actualizar(Long id, Usuario datos) {
+
+        Optional<Usuario> usuarioOpt = usuarioRepository.findById(id);
+        if (usuarioOpt.isEmpty()) {
+            return Optional.of("El usuario no existe");
+        }
+
+        Usuario usuario = usuarioOpt.get();
+
+        usuario.setNombre(datos.getNombre());
+        usuario.setEmail(datos.getEmail());
+        usuario.setRol(datos.getRol());
+        usuario.setSaldo(datos.getSaldo());
+
+        usuarioRepository.save(usuario);
+        return Optional.empty();
+    }
+
     public boolean eliminar(Long id) {
         if (usuarioRepository.existsById(id)) {
             usuarioRepository.deleteById(id);
