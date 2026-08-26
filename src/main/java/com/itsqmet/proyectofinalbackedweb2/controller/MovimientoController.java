@@ -127,4 +127,30 @@ public class MovimientoController {
         Usuario usuario = usuarioService.obtenerPorEmail(authentication.getName()).orElseThrow();
         return movimiento.getUsuario().getId().equals(usuario.getId());
     }
+
+    @PostMapping("/transferencia")
+    public ResponseEntity<?> transferir(
+            @RequestBody Map<String, Object> datos) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        Usuario usuarioOrigen = usuarioService.obtenerPorEmail(authentication.getName()).orElseThrow();
+
+        Long usuarioDestinoId = Long.valueOf(datos.get("usuarioDestinoId").toString());
+
+        Double monto = Double.valueOf(datos.get("monto").toString());
+
+        String descripcion = datos.get("descripcion").toString();
+
+        Optional<String> error = movimientoService.transferir(usuarioOrigen, usuarioDestinoId, monto, descripcion);
+
+        if (error.isPresent()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", error.get()));
+        }
+
+        return ResponseEntity.ok(
+                Map.of("mensaje", "Transferencia realizada correctamente")
+        );
+    }
 }

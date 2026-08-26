@@ -6,6 +6,7 @@ import com.itsqmet.proyectofinalbackedweb2.repository.MovimientoRepository;
 import com.itsqmet.proyectofinalbackedweb2.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -124,5 +125,69 @@ public class MovimientoService {
 
         movimientoRepository.deleteById(id);
         return true;
+    }
+
+
+    @Transactional
+    public Optional<String> transferir(
+            Usuario usuarioOrigen,
+            Long usuarioDestinoId,
+            Double monto,
+            String descripcion) {
+
+        if (monto == null || monto <= 0) {
+            return Optional.of("El monto debe ser mayor a 0");
+        }
+
+        Optional<Usuario> destinoOpt =
+                usuarioRepository.findById(usuarioDestinoId);
+
+        if (destinoOpt.isEmpty()) {
+            return Optional.of("El usuario destino no existe");
+        }
+
+        Usuario usuarioDestino = destinoOpt.get();
+
+        if (usuarioOrigen.getId().equals(usuarioDestino.getId())) {
+            return Optional.of("No puedes transferirte dinero a ti mismo");
+        }
+
+        if (usuarioOrigen.getSaldo() < monto) {
+            return Optional.of("Saldo insuficiente");
+        }
+
+
+        usuarioOrigen.setSaldo(
+                usuarioOrigen.getSaldo() - monto
+        );
+
+        usuarioDestino.setSaldo(
+                usuarioDestino.getSaldo() + monto
+        );
+
+        usuarioRepository.save(usuarioOrigen);
+        usuarioRepository.save(usuarioDestino);
+
+        Movimiento enviado = new Movimiento();
+        enviado.setTipo("TRANSFERENCIA_ENVIADA");
+        enviado.setMonto(monto);
+        enviado.setFecha(LocalDateTime.now());
+        enviado.setDescripcion(descripcion);
+        enviado.setUsuario(usuarioOrigen);
+
+        movimientoRepository.save(enviado);
+
+
+
+        Movimiento recibido = new Movimiento();
+        recibido.setTipo("TRANSFERENCIA_RECIBIDA");
+        recibido.setMonto(monto);
+        recibido.setFecha(LocalDateTime.now());
+        recibido.setDescripcion(descripcion);
+        recibido.setUsuario(usuarioDestino);
+
+        movimientoRepository.save(recibido);
+
+        return Optional.empty();
     }
 }
