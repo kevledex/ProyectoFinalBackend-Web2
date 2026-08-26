@@ -103,22 +103,33 @@ public class AuthController {
 
     @GetMapping("/perfil")
     public ResponseEntity<?> perfil() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getPrincipal())) {
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado. Debes hacer login primero."));
+                    .body(Map.of(
+                            "error",
+                            "No autenticado. Debes hacer login primero."
+                    ));
         }
+        String email = authentication.getName();
+        Optional<Usuario> usuario = usuarioService.obtenerPorEmail(email);
 
-        List<String> roles = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .toList();
-
+        if (usuario.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Usuario u = usuario.get();
         return ResponseEntity.ok(Map.of(
-                "mensaje", "Acceso autorizado",
-                "usuarioActual", authentication.getName(),
-                "roles", roles
+                "id", u.getId(),
+                "nombre", u.getNombre(),
+                "email", u.getEmail(),
+                "rol", u.getRol(),
+                "saldo", u.getSaldo()
         ));
     }
 
